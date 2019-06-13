@@ -68,3 +68,44 @@ class TestJustProduct < Minitest::Test
     end
   end
 end
+
+=begin
+fmap :: (a -> b) -> f a -> f b
+
+instance Functor Maybe where
+    fmap f (Just x) = Just (f x)
+    fmap f Nothing = Nothing
+
+Functor laws:
+- fmap id = id
+- fmap (f . g) = fmap f . fmap g
+=end
+
+def fmap(fproc, maybe)
+  return maybe if maybe.nothing?
+  Concurrent::Maybe.from { fproc.(maybe.value) }
+end
+
+class TestMaybeFunctor < Minitest::Test
+
+  def setup
+    @just_int = Concurrent::Maybe.just(4)
+    @nothing = Concurrent::Maybe.nothing
+  end
+
+  def test_id
+    id = ->(x) { x }
+    assert_equal @nothing, fmap(id, @nothing)
+    assert_equal @just_int, fmap(id, @just_int)
+  end
+
+  def test_composition
+    f = ->(x) { x ** 3 }
+    g = ->(x) { x - 3 }
+    assert_equal @nothing, fmap(f << g, @nothing)
+    assert_equal fmap(f, fmap(g, @nothing)), fmap(f << g, @nothing)
+    assert_equal Concurrent::Maybe.just(1), fmap(f << g, @just_int)
+    assert_equal fmap(f, fmap(g, @just_int)), fmap(f << g, @just_int)
+
+  end
+end
